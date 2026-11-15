@@ -12,91 +12,71 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #f5f5f5;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #222222; /* Matches DearFlip lightbox backdrop so there is zero white flash */
             overflow: hidden;
         }
 
-        /* Clean fallback / reopen button if user closes the lightbox */
-        .fallback-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            gap: 16px;
-        }
-
+        /* Keep the trigger completely invisible so it never shows behind or after the flipbook */
         ._df_button {
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: #ffffff;
-            background-color: #111111;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        ._df_button:hover {
-            background-color: #333333;
-        }
-
-        .back-link {
-            font-size: 13px;
-            color: #555555;
-            text-decoration: none;
-            border-bottom: 1px solid #999999;
-            padding-bottom: 2px;
-        }
-
-        .back-link:hover {
-            color: #000000;
-            border-bottom-color: #000000;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <div class="fallback-container">
-        <button class="_df_button" source="What-Fresh-Hell-Is-This_Book.pdf" id="df_manual_book">
-            Open Flipbook
-        </button>
-        <a href="javascript:void(0);" onclick="exitFlipbook();" class="back-link">
-            ← Back to Portfolio
-        </a>
-    </div>
+    <button class="_df_button" source="What-Fresh-Hell-Is-This_Book.pdf" id="df_manual_book">Open</button>
 
     <script src="dflip/js/libs/jquery.min.js" type="text/javascript"></script>
     <script src="dflip/js/dflip.min.js" type="text/javascript"></script>
 
     <script>
-        function exitFlipbook() {
-            if (window.history.length > 1) {
+        function returnToPortfolio() {
+            // 1. If opened in the same tab from your portfolio, go straight back
+            if (window.history.length > 1 && document.referrer) {
                 window.history.back();
-            } else {
-                window.close();
+                return;
             }
+            // 2. If opened in a new tab by Adobe Portfolio, close the tab
+            window.close();
+            // 3. Fallback if the browser blocks window.close()
+            setTimeout(function () {
+                window.location.href = "https://arkaraboonthong.myportfolio.com/re-sources";
+            }, 150);
         }
 
-        // Automatically open the DearFlip lightbox as soon as the page loads
-        // and hook the built-in lightbox close ('X') button to return to your portfolio
         window.addEventListener('load', function () {
-            setTimeout(function () {
-                var bookBtn = document.getElementById('df_manual_book');
-                if (bookBtn) {
-                    bookBtn.click();
-                }
+            var bookBtn = document.getElementById('df_manual_book');
+            if (bookBtn) {
+                bookBtn.click();
+            }
 
-                // Listen for clicks on DearFlip's lightbox close button (.df-ui-close)
-                document.addEventListener('click', function (e) {
-                    if (e.target.closest('.df-ui-close') || e.target.classList.contains('df-lightbox-bg')) {
-                        exitFlipbook();
-                    }
-                });
-            }, 250);
+            // Watch the DOM for DearFlip's lightbox being closed/removed
+            var lightboxOpened = false;
+            var observer = new MutationObserver(function () {
+                var lightbox = document.querySelector('.df-lightbox-wrapper');
+                if (lightbox && lightbox.style.display !== 'none') {
+                    lightboxOpened = true;
+                } else if (lightboxOpened) {
+                    observer.disconnect();
+                    returnToPortfolio();
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+
+            // Capture click on the 'X' button in the capture phase (before DearFlip stops propagation)
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('.df-ui-close')) {
+                    returnToPortfolio();
+                }
+            }, true);
         });
     </script>
 
